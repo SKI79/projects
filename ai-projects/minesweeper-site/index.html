@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper</title>
+    <style>
+        :root {
+            --cell-size: 30px;
+            --border-light: #fff;
+            --border-dark: #7b7b7b;
+            --bg-main: #c0c0c0;
+            --bg-cell: #bdbdbd;
+            --text-1: #0000ff;
+            --text-2: #008000;
+            --text-3: #ff0000;
+            --text-4: #000080;
+            --text-5: #800000;
+            --text-6: #008080;
+            --text-7: #000000;
+            --text-8: #808080;
+        }
+
+        body {
+            font-family: 'VT323', monospace, sans-serif; /* A retro-style font */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #008080;
+            color: #000;
+            user-select: none;
+        }
+
+        .minesweeper-container {
+            background-color: var(--bg-main);
+            border: 4px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 5px 5px 10px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--bg-main);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 4px solid;
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+            border-radius: 4px;
+        }
+
+        .digital-display {
+            background-color: #000;
+            color: #ff0000;
+            font-size: 2rem;
+            line-height: 1;
+            padding: 5px 10px;
+            border: 2px solid;
+            border-color: #7b7b7b #fff #fff #7b7b7b;
+            min-width: 80px;
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        #reset-button {
+            width: 48px;
+            height: 48px;
+            font-size: 2.5rem;
+            border: 4px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            background-color: var(--bg-main);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 4px;
+        }
+        #reset-button:active {
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .controls button {
+            font-family: 'VT323', monospace;
+            font-size: 1rem;
+            padding: 5px 10px;
+            border: 3px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            background-color: var(--bg-main);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .controls button.active {
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+            background-color: #a0a0a0;
+        }
+        
+        #game-board {
+            display: grid;
+            border: 4px solid;
+            border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+            image-rendering: pixelated; /* Ensures crisp emojis */
+        }
+        
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: var(--bg-cell);
+            border: 3px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .cell.revealed {
+            background-color: var(--bg-main);
+            border: 1px solid #7b7b7b;
+        }
+        
+        .cell.mine {
+            background-color: #ff0000;
+        }
+        
+        .cell[data-count="1"] { color: var(--text-1); }
+        .cell[data-count="2"] { color: var(--text-2); }
+        .cell[data-count="3"] { color: var(--text-3); }
+        .cell[data-count="4"] { color: var(--text-4); }
+        .cell[data-count="5"] { color: var(--text-5); }
+        .cell[data-count="6"] { color: var(--text-6); }
+        .cell[data-count="7"] { color: var(--text-7); }
+        .cell[data-count="8"] { color: var(--text-8); }
+        
+        /* Message Box Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: var(--bg-main);
+            padding: 30px;
+            border: 4px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            border-radius: 8px;
+            text-align: center;
+            width: 80%;
+            max-width: 400px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        #message-text {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        #modal-close-btn {
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+            padding: 10px 20px;
+            border: 3px solid;
+            border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+            background-color: var(--bg-main);
+            cursor: pointer;
+        }
+        
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=VT323&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="minesweeper-container">
+        <div class="header">
+            <div id="mine-counter" class="digital-display">000</div>
+            <button id="reset-button">🙂</button>
+            <div id="timer" class="digital-display">000</div>
+        </div>
+        <div class="controls">
+            <button id="easy-btn" class="active">Easy</button>
+            <button id="medium-btn">Medium</button>
+            <button id="hard-btn">Hard</button>
+        </div>
+        <div id="game-board"></div>
+    </div>
+    
+    <!-- Custom Modal for Messages -->
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <p id="message-text">You won!</p>
+            <button id="modal-close-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const boardElement = document.getElementById('game-board');
+            const mineCounterElement = document.getElementById('mine-counter');
+            const timerElement = document.getElementById('timer');
+            const resetButton = document.getElementById('reset-button');
+            
+            // Modal elements
+            const messageModal = document.getElementById('message-modal');
+            const messageText = document.getElementById('message-text');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            const difficulties = {
+                easy: { rows: 9, cols: 9, mines: 10 },
+                medium: { rows: 16, cols: 16, mines: 40 },
+                hard: { rows: 16, cols: 30, mines: 99 }
+            };
+            let currentDifficulty = 'easy';
+            let rows, cols, mineCount;
+            let board = [];
+            let minesPlaced = false;
+            let gameOver = false;
+            let flagsPlaced = 0;
+            let timerInterval;
+            let time = 0;
+
+            function initGame() {
+                // Set game parameters from difficulty
+                ({ rows, cols, mines: mineCount } = difficulties[currentDifficulty]);
+
+                // Reset game state
+                gameOver = false;
+                minesPlaced = false;
+                flagsPlaced = 0;
+                time = 0;
+                board = [];
+                resetButton.textContent = '🙂';
+                
+                // Stop and reset timer
+                clearInterval(timerInterval);
+                updateTimerDisplay();
+                updateMineCounter();
+                
+                // Adjust CSS variables for board size
+                boardElement.style.gridTemplateColumns = `repeat(${cols}, var(--cell-size))`;
+                boardElement.style.gridTemplateRows = `repeat(${rows}, var(--cell-size))`;
+                boardElement.innerHTML = '';
+
+                // Create the board data structure and DOM elements
+                for (let r = 0; r < rows; r++) {
+                    const row = [];
+                    for (let c = 0; c < cols; c++) {
+                        row.push({
+                            isMine: false,
+                            isRevealed: false,
+                            isFlagged: false,
+                            adjacentMines: 0
+                        });
+
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.dataset.row = r;
+                        cell.dataset.col = c;
+                        cell.addEventListener('click', onCellClick);
+                        cell.addEventListener('contextmenu', onCellRightClick);
+                        boardElement.appendChild(cell);
+                    }
+                    board.push(row);
+                }
+            }
+
+            function placeMines(firstClickRow, firstClickCol) {
+                let minesToPlace = mineCount;
+                while (minesToPlace > 0) {
+                    const r = Math.floor(Math.random() * rows);
+                    const c = Math.floor(Math.random() * cols);
+
+                    // Avoid placing a mine on the first click or its adjacent cells
+                    const isSafeZone = Math.abs(r - firstClickRow) <= 1 && Math.abs(c - firstClickCol) <= 1;
+
+                    if (!board[r][c].isMine && !isSafeZone) {
+                        board[r][c].isMine = true;
+                        minesToPlace--;
+                    }
+                }
+                calculateAdjacentMines();
+                minesPlaced = true;
+            }
+
+            function calculateAdjacentMines() {
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (board[r][c].isMine) continue;
+                        let count = 0;
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                const nr = r + dr;
+                                const nc = c + dc;
+                                if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && board[nr][nc].isMine) {
+                                    count++;
+                                }
+                            }
+                        }
+                        board[r][c].adjacentMines = count;
+                    }
+                }
+            }
+            
+            function onCellClick(event) {
+                if (gameOver) return;
+                
+                const cellElement = event.target;
+                const row = parseInt(cellElement.dataset.row);
+                const col = parseInt(cellElement.dataset.col);
+                const cellData = board[row][col];
+
+                if (cellData.isFlagged || cellData.isRevealed) return;
+
+                // Place mines on the first click
+                if (!minesPlaced) {
+                    placeMines(row, col);
+                    startTimer();
+                }
+
+                if (cellData.isMine) {
+                    revealAllMines();
+                    cellElement.classList.add('mine');
+                    gameOver = true;
+                    resetButton.textContent = '💀';
+                    clearInterval(timerInterval);
+                    showMessage('You lost! Better luck next time.', 'Try Again');
+                    return;
+                }
+
+                revealCell(row, col);
+                checkWinCondition();
+            }
+
+            function onCellRightClick(event) {
+                event.preventDefault();
+                if (gameOver) return;
+
+                const cellElement = event.target;
+                const row = parseInt(cellElement.dataset.row);
+                const col = parseInt(cellElement.dataset.col);
+                const cellData = board[row][col];
+
+                if (cellData.isRevealed) return;
+                
+                if (!minesPlaced) { // If this is the first action on the board
+                    placeMines(row, col); // Place mines, avoiding this cell
+                    startTimer();
+                }
+                
+                cellData.isFlagged = !cellData.isFlagged;
+                
+                if (cellData.isFlagged) {
+                    flagsPlaced++;
+                    cellElement.textContent = '🚩';
+                } else {
+                    flagsPlaced--;
+                    cellElement.textContent = '';
+                }
+                
+                updateMineCounter();
+            }
+
+            function revealCell(r, c) {
+                if (r < 0 || r >= rows || c < 0 || c >= cols || board[r][c].isRevealed) return;
+
+                const cellData = board[r][c];
+                const cellElement = document.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+
+                cellData.isRevealed = true;
+                cellElement.classList.add('revealed');
+                cellElement.textContent = ''; // Clear flag if any
+                if(cellData.isFlagged){ // If a flagged cell is revealed (e.g. by flood fill), update flag count
+                     cellData.isFlagged = false;
+                     flagsPlaced--;
+                     updateMineCounter();
+                }
+
+
+                if (cellData.adjacentMines > 0) {
+                    cellElement.textContent = cellData.adjacentMines;
+                    cellElement.dataset.count = cellData.adjacentMines;
+                } else {
+                    // Flood fill for empty cells
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (dr === 0 && dc === 0) continue;
+                            revealCell(r + dr, c + dc);
+                        }
+                    }
+                }
+            }
+
+            function revealAllMines() {
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (board[r][c].isMine) {
+                            const cellElement = document.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+                            cellElement.classList.add('revealed');
+                            if(!board[r][c].isFlagged){
+                                cellElement.textContent = '💣';
+                            }
+                        }
+                    }
+                }
+            }
+
+            function checkWinCondition() {
+                let revealedCount = 0;
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if (board[r][c].isRevealed) {
+                            revealedCount++;
+                        }
+                    }
+                }
+                
+                if (revealedCount === rows * cols - mineCount) {
+                    gameOver = true;
+                    resetButton.textContent = '😎';
+                    clearInterval(timerInterval);
+                    showMessage('Congratulations! You won!', 'Play Again');
+                    // Flag remaining mines
+                     for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            if (board[r][c].isMine && !board[r][c].isFlagged) {
+                                board[r][c].isFlagged = true;
+                                const cellElement = document.querySelector(`.cell[data-row='${r}'][data-col='${c}']`);
+                                cellElement.textContent = '🚩';
+                            }
+                        }
+                    }
+                    flagsPlaced = mineCount;
+                    updateMineCounter();
+                }
+            }
+            
+            // --- UI and Timer Functions ---
+            function updateMineCounter() {
+                mineCounterElement.textContent = (mineCount - flagsPlaced).toString().padStart(3, '0');
+            }
+
+            function updateTimerDisplay() {
+                timerElement.textContent = time.toString().padStart(3, '0');
+            }
+
+            function startTimer() {
+                if (timerInterval) clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (time < 999) {
+                        time++;
+                        updateTimerDisplay();
+                    }
+                }, 1000);
+            }
+            
+            // --- Difficulty Controls ---
+            function setDifficulty(difficulty) {
+                currentDifficulty = difficulty;
+                document.querySelectorAll('.controls button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                document.getElementById(`${difficulty}-btn`).classList.add('active');
+                initGame();
+            }
+
+            // --- Modal Functions ---
+            function showMessage(message, buttonText) {
+                messageText.textContent = message;
+                modalCloseBtn.textContent = buttonText;
+                messageModal.style.display = 'flex';
+            }
+
+            function hideModal() {
+                messageModal.style.display = 'none';
+            }
+            
+            // --- Event Listeners ---
+            resetButton.addEventListener('click', initGame);
+            document.getElementById('easy-btn').addEventListener('click', () => setDifficulty('easy'));
+            document.getElementById('medium-btn').addEventListener('click', () => setDifficulty('medium'));
+            document.getElementById('hard-btn').addEventListener('click', () => setDifficulty('hard'));
+            
+            modalCloseBtn.addEventListener('click', () => {
+                hideModal();
+                initGame();
+            });
+
+            // Initial game setup
+            initGame();
+        });
+    </script>
+</body>
+</html>
+
